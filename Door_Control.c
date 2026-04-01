@@ -1,3 +1,10 @@
+/*
+*******************************************************************************
+doorInit() should be called once at the start of the program to set up the door control system. 
+doorupdate() should be called in the main loop to smoothly transition the door to the target position when driveDoorOpen() or driveDoorClose() is called.
+*****************************************************************************
+*/ 
+
 #include "Ifx_Types.h"
 #include "IfxCpu.h"
 #include "IfxScuWdt.h"
@@ -7,27 +14,25 @@
 
 #include "Door_Control.h"
 
-void initDoorGPIO(void) {
-    P02_IOCR0.U &= ~(0x1F << PCN_1_IDX);
-    P02_IOCR0.U |= 0x02 << PCN_1_IDX;
+static float currentDuty = DOOR_CLOSE_DUTY;
+static float targetDuty = DOOR_CLOSE_DUTY;
+static uint64 lastUpdateTick = 0;
+static uint64 tickInterval = 0; 
 
-    P10_IOCR0.U &= ~(0x1F << PCN_1_IDX);
-    P10_IOCR0.U |= 0x10 << PCN_1_IDX;
-
-    P10_IOCR0.U &= ~(0x1F << PCN_2_IDX);
-    P10_IOCR0.U |= 0x10 << PCN_2_IDX;
+void initDoorGPIO(Ifx_P *btnPort, uint8 btnPin) {
+    IfxPort_setPinModeInput(btnPort, btnPin, IfxPort_InputMode_pullUp);
 }
 
-void initDoorPWM(void) {
+void initDoorPWM(const IfxCcu6_Cc60_Out *servoPin) {
     uint16 password = IfxScuWdt_getCpuWatchdogPassword();
     IfxScuWdt_clearCpuEndinit(password);
     MODULE_CCU60.CLC.U = 0x00000000;
     IfxScuWdt_setCpuEndinit(password);
 
-    IfxPort_setPinModeOutput(IfxCcu60_CC60_P02_6_OUT.pin.port,
-                             IfxCcu60_CC60_P02_6_OUT.pin.pinIndex,
+    IfxPort_setPinModeOutput(servoPin->pin.port,
+                             servoPin->pin.pinIndex,
                              IfxPort_OutputMode_pushPull,
-                             IfxCcu60_CC60_P02_6_OUT.select);
+                             servoPin->select);
 
     MODULE_CCU60.TCTR0.B.T12CLK = 7;
     MODULE_CCU60.TCTR0.B.T12PRE = 0;
@@ -51,22 +56,42 @@ void setServoDutyCycle(float dutyPercent) {
     MODULE_CCU60.TCTR4.B.T12STR = 1;
 }
 
-void doorInit(void){
-    initDoorPWM();
-    initDoorGPIO();
-    setServoDutyCycle(DOOR_CLOSE_DUTY);
+void doorInit(const IfxCcu6_Cc60_Out *servoPin, Ifx_P *btnPort, uint8 btnPin){
+    initDoorPWM(servoPin);
+    initDoorGPIO(btnPort, btnPin);
+
+    currentDuty = DOOR_CLOSE_DUTY;
+    targetDuty = DOOR_CLOSE_DUTY;
+    setServoDutyCycle(currentDuty);
+
+    tickInterval = IfxStm_getTicksFromMilliseconds(BSP_DEFAULT_TIMER, DOOR_SPEED_MS);
+    lastUpdateTick = IfxStm_get(BSP_DEFAULT_TIMER);
 }
 
 void driveDoorOpen(void){
-    for(float duty = DOOR_CLOSE_DUTY; duty <= DOOR_OPEN_DUTY; duty += 0.1f) {
-        setServoDutyCycle(duty);
-        waitTime(IfxStm_getTicksFromMilliseconds(BSP_DEFAULT_TIMER, DOOR_SPEED_MS));
-    }
+    targetDuty = DOOR_OPEN_DUTY;
 }
 
 void driveDoorClose(void){
-    for(float duty = DOOR_OPEN_DUTY; duty >= DOOR_CLOSE_DUTY; duty -= 0.1f) {
-        setServoDutyCycle(duty);
-        waitTime(IfxStm_getTicksFromMilliseconds(BSP_DEFAULT_TIMER, DOOR_SPEED_MS));
+    targetDuty = DOOR_CLOSE_DUTY;
+}
+
+void doorUpdate(void){
+    if (currentDuty != targetDuty) {
+        uint64 currentTick = IfxStm_get(BSP_DEFAULT_TIMER); 
+        
+        if ((currentTick - lastUpdateTick) >= tickInterval) {
+            lastUpdateTick = currentTick; 
+
+            if (currentDuty < targetDuty) {
+                currentDuty += 0.1f;
+                if (currentDuty > targetDuty - 0.05f) currentDuty = targetDuty; 
+            } 
+            else if (currentDuty > targetDuty) {
+                currentDuty -= 0.1f;
+                if (currentDuty < targetDuty + 0.05f) currentDuty = targetDuty;
+            }
+            setServoDutyCycle(currentDuty); 
+        }
     }
 }

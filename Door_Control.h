@@ -12,9 +12,9 @@
 
 #define PWM_PERIOD 15625
 
-void doorInit(void);
+void doorInit(const IfxCcu6_Cc60_Out *servoPin, Ifx_P *btnPort, uint8 btnPin);
 void driveDoorOpen(void);
 void driveDoorClose(void);
-void doorControl(void);
+void doorUpdate(void);
 
 #endif /* DOOR_CONTROL_H */
