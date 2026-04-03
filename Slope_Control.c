@@ -7,7 +7,6 @@ Init_Sliding_Door(GPIOA, GPIO_PIN_6,
                     GPIOA, GPIO_PIN_8, 
                     GPIOA, GPIO_PIN_9);
 
-Call slopeControl() to start the door movement(both open`   ing and closing).
 You should call updateSlope() in the main loop to update the stepper motor control.
 ***************************************************************
 */
