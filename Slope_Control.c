@@ -7,7 +7,7 @@ Init_Sliding_Door(GPIOA, GPIO_PIN_6,
                     GPIOA, GPIO_PIN_8, 
                     GPIOA, GPIO_PIN_9);
 
-Call slopeControl() to start the door movement(both opening and closing).
+Call slopeControl() to start the door movement(both open`   ing and closing).
 You should call updateSlope() in the main loop to update the stepper motor control.
 ***************************************************************
 */
@@ -40,7 +40,15 @@ void initSlopeControl(GPIO_TypeDef* port1, uint16_t pin1,
     mPorts[3] = port4; mPins[3] = pin4;
 }
 
-void slopeControl(void) {
+void driveSlopeOpen(void) {
+    if(isSlopeMoving == 0) {  // If the door is not currently moving
+        isSlopeMoving = 1;
+        currentStepCount = 0;
+        lastTick = HAL_GetTick(); 
+    }
+}
+
+void driveSlopeClose(void) {
     if(isSlopeMoving == 0) {  // If the door is not currently moving
         isSlopeMoving = 1;
         currentStepCount = 0;
