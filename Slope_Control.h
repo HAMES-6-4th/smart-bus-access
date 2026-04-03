@@ -3,33 +3,12 @@
 
 #include "main.h"
 
-#define DOOR_OPEN_DUTY   12.5f
-#define SERVO_POS_0      1048  
-#define SERVO_POS_180    5242
+void initSlopeControl(GPIO_TypeDef* port1, uint16_t pin1, 
+                       GPIO_TypeDef* port2, uint16_t pin2,
+                       GPIO_TypeDef* port3, uint16_t pin3,
+                       GPIO_TypeDef* port4, uint16_t pin4);
 
-typedef enum 
-{
-    SERVO_IDLE,     
-    SERVO_MOVING_UP,
-    SERVO_MOVING_DOWN
-} ServoState;
+void slopeControl(void);
+void updateSlope(void);
 
-typedef struct 
-{
-    TIM_HandleTypeDef *htim; 
-    uint32_t channel;    
-    uint32_t currentDuty; 
-    uint32_t targetDuty;  
-    uint32_t lastTick;     
-    uint32_t interval;       
-    ServoState state;     
-} SlopeControl;
-
-void SlopeInit(SlopeControl *sc, TIM_HandleTypeDef *htim, uint32_t channel);
-void SlopeMoveTo(SlopeControl *sc, uint32_t target);
-void SlopeProcess(SlopeControl *sc);
-
-void SlopeOpen(SlopeControl *sc);  
-void SlopeClose(SlopeControl *sc); 
-
-#endif
+#endif /* __SLOPE_CONTROL_H */

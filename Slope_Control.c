@@ -1,74 +1,75 @@
 /*
-******************************************************************************
-You should make SlopeControl sc before using these functions. 
-Then call SlopeInit(&sc, &htimX, TIM_CHANNEL_Y) to initialize it. 
+***************************************************************
+You should use initSlopeControl() to initialize the GPIO pins for the stepper motor control.
+ex)
+Init_Sliding_Door(GPIOA, GPIO_PIN_6, 
+                    GPIOA, GPIO_PIN_7, 
+                    GPIOA, GPIO_PIN_8, 
+                    GPIOA, GPIO_PIN_9);
 
-In your main loop, call SlopeProcess(&sc) to update the servo position. 
-Use SlopeOpen(&sc) and SlopeClose(&sc) to open and close the slope.
-******************************************************************************
+Call slopeControl() to start the door movement(both opening and closing).
+You should call updateSlope() in the main loop to update the stepper motor control.
+***************************************************************
 */
 
 #include "Slope_Control.h"
 
-void SlopeInit(SlopeControl *sc, TIM_HandleTypeDef *htim, uint32_t channel) 
-{
-    sc->htim = htim;
-    sc->channel = channel;
-    sc->currentDuty = 1048;
-    sc->targetDuty = 1048;
-    sc->lastTick = 0;
-    sc->interval = 10;     
-    sc->state = SERVO_IDLE;
+uint8_t stepSequence[4][4] = {
+    {1, 1, 0, 0}, 
+    {0, 1, 1, 0},
+    {0, 0, 1, 1}, 
+    {1, 0, 0, 1}  
+};
 
-    HAL_TIM_PWM_Start(sc->htim, sc->channel);
-    __HAL_TIM_SET_COMPARE(sc->htim, sc->channel, sc->currentDuty);
+uint8_t isSlopeMoving = 0;     
+uint32_t currentStepCount = 0;  
+uint32_t targetSteps = 1024;    
+uint32_t lastTick = 0;      
+int stepIndex = 0;          
+
+static GPIO_TypeDef* mPorts[4];
+static uint16_t mPins[4];
+
+void initSlopeControl(GPIO_TypeDef* port1, uint16_t pin1,
+                       GPIO_TypeDef* port2, uint16_t pin2,
+                       GPIO_TypeDef* port3, uint16_t pin3,
+                       GPIO_TypeDef* port4, uint16_t pin4) {
+    mPorts[0] = port1; mPins[0] = pin1;
+    mPorts[1] = port2; mPins[1] = pin2;
+    mPorts[2] = port3; mPins[2] = pin3;
+    mPorts[3] = port4; mPins[3] = pin4;
 }
 
-void SlopeMoveTo(SlopeControl *sc, uint32_t target) 
-{
-    sc->targetDuty = target;
-    if (sc->targetDuty > sc->currentDuty) sc->state = SERVO_MOVING_UP;
-    else if (sc->targetDuty < sc->currentDuty) sc->state = SERVO_MOVING_DOWN;
-}
-
-void SlopeProcess(SlopeControl *sc) 
-{
-    if (sc->state == SERVO_IDLE) return;
-
-    uint32_t currentTick = HAL_GetTick();
-    if (currentTick - sc->lastTick >= sc->interval) 
-    {
-        sc->lastTick = currentTick;
-
-        if (sc->state == SERVO_MOVING_UP) 
-        {
-            sc->currentDuty += 20; 
-            if (sc->currentDuty >= sc->targetDuty) 
-            {
-                sc->currentDuty = sc->targetDuty;
-                sc->state = SERVO_IDLE;
-            }
-        } 
-        else if (sc->state == SERVO_MOVING_DOWN) 
-        {
-            sc->currentDuty -= 20; 
-            if (sc->currentDuty <= sc->targetDuty) 
-            {
-                sc->currentDuty = sc->targetDuty;
-                sc->state = SERVO_IDLE;
-            }
-        }
-
-        __HAL_TIM_SET_COMPARE(sc->htim, sc->channel, sc->currentDuty);
+void slopeControl(void) {
+    if(isSlopeMoving == 0) {  // If the door is not currently moving
+        isSlopeMoving = 1;
+        currentStepCount = 0;
+        lastTick = HAL_GetTick(); 
     }
 }
 
-void SlopeOpen(SlopeControl *sc) 
-{
-    SlopeMoveTo(sc, SERVO_POS_180);
-}
+void updateSlope(void) {
+    if (isSlopeMoving == 1) {
+        if (HAL_GetTick() - lastTick >= 3) {
+            lastTick = HAL_GetTick(); 
 
-void SlopeClose(SlopeControl *sc) 
-{
-    SlopeMoveTo(sc, SERVO_POS_0);
+            HAL_GPIO_WritePin(mPorts[0], mPins[0], stepSequence[stepIndex][0] ? GPIO_PIN_SET : GPIO_PIN_RESET); 
+            HAL_GPIO_WritePin(mPorts[1], mPins[1], stepSequence[stepIndex][1] ? GPIO_PIN_SET : GPIO_PIN_RESET); 
+            HAL_GPIO_WritePin(mPorts[2], mPins[2], stepSequence[stepIndex][2] ? GPIO_PIN_SET : GPIO_PIN_RESET); 
+            HAL_GPIO_WritePin(mPorts[3], mPins[3], stepSequence[stepIndex][3] ? GPIO_PIN_SET : GPIO_PIN_RESET); 
+
+            stepIndex++; 
+            if(stepIndex > 3) stepIndex = 0; 
+
+            currentStepCount++; 
+            
+            if (currentStepCount >= targetSteps) {
+                isSlopeMoving = 0; 
+                HAL_GPIO_WritePin(mPorts[0], mPins[0], GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(mPorts[1], mPins[1], GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(mPorts[2], mPins[2], GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(mPorts[3], mPins[3], GPIO_PIN_RESET);
+            }
+        }
+    }
 }
