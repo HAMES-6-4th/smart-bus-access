@@ -14,7 +14,7 @@ Bluetooth Low Energy, CAN, UART, 다중 MCU 제어를 연동하여
       <a href="https://github.com/Jeong-Je">
         <img src="https://github.com/Jeong-Je.png" width="100px;" alt="Jeong-Je" />
         <br />
-        <b>SON JEONG JE</b>
+        <b>손정제</b>
       </a>
       <br />
       팀장
