@@ -11,8 +11,8 @@ Bluetooth Low Energy, CAN, UART, 다중 MCU 제어를 연동하여
 <table>
   <tr>
     <td align="center">
-      <a href="https://github.com/jeongjeson656">
-        <img src="https://github.com/jeongjeson656.png" width="100px;" alt="Jeong-Je SON" />
+      <a href="https://github.com/Jeong-Je">
+        <img src="https://github.com/Jeong-Je.png" width="100px;" alt="Jeong-Je" />
         <br />
         <b>SON JEONG JE</b>
       </a>
@@ -181,23 +181,6 @@ BLE 신호의 company id, command code, active flag, RSSI를 확인한 뒤 ECU�
 <p align="center">
   <img src="./docs/overall-architecture.png" width="90%" alt="전체 시스템 구조도" />
 </p>
-
-```mermaid
-flowchart LR
-    App["Android App<br/>BLE Advertise"] --> BLE["ESP32 BLE Module<br/>BLE Scan / UART Bridge"]
-    BLE -->|"BLE UART<br/>Stop Bell / Slope Request"| Driver["Driver ECU<br/>TC375"]
-    BLE -->|"BLE UART<br/>Auto Slope Request"| Door["Door ECU<br/>TC375"]
-    Driver -->|"CAN 0x100<br/>Command"| Door["Door ECU<br/>TC375"]
-    Door -->|"CAN 0x101<br/>Status"| Driver
-    Door -->|"Slope UART<br/>OPEN/CLOSE"| Slope["Slope ECU<br/>STM32"]
-    Slope --> Ramp["Electric Ramp"]
-    Door --> DoorMotor["Electric Door"]
-    Obstacle["Ultrasonic Sensor<br/>Pinch Detection"] --> Door
-    Fire["Temperature & Humidity Sensor<br/>Fire Detection"] --> Driver
-    StopBell["Stop Bell Buttons"] --> Driver
-    Driver --> Audio["Audio Module<br/>Speaker"]
-    Driver --> Monitor["Monitoring Module<br/>Door/Slope/Block/Stop"]
-```
 
 ### 레포지토리 구조
 
